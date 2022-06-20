@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -30,14 +31,21 @@ namespace Server
 
         public override void StartGame()
         {
-            Thread.Sleep(3000);
             IsPlaying = true;
             while (ReadyPlayers.Count > 0)
             {
+                Thread.Sleep(5000);
                 IsNextTurn = false;
                 count = 0;
                 //***获得题目
-                string currentPoem = "大河之剑天上来";
+                HttpClientHandler handler = new HttpClientHandler();
+                handler.ServerCertificateCustomValidationCallback = (message, cert, chain, err) => true;
+                HttpClient client = new HttpClient(handler);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                var task = client.GetStringAsync("https://localhost:5001/api/poem/guess");
+                string currentPoem = task.Result;
                 SendMessage(ConvertMessageForServer(8, currentPoem));
                 //获得玩家
                 ReadyPlayers.TryDequeue(out currentDrawer);
@@ -53,7 +61,7 @@ namespace Server
                 };
                 timer.Start();
                 timer.Elapsed += new ElapsedEventHandler(NextTurn);
-                while (!IsNextTurn && count < Players.Count) ;//时间到或者所有人答对
+                while (!IsNextTurn && count < Players.Count-1) ;//时间到或者所有人答对
                 //本轮结束
                 timer.Stop();
                 timer.Dispose();
